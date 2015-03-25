@@ -84,16 +84,12 @@ class SpecialAbility(models.Model):
     character = models.ForeignKey('Character', null=True, blank=True)
     item = models.ForeignKey('Item', null=True, blank=True)
 
-
-    slug = models.SlugField(unique=True)
-
     def save(self, *args, **kwargs):
-        slug = slugify(self.name)
         super(SpecialAbility, self).save(*args, **kwargs)
 
 
     def __str__(self):
-        return self.name
+        return "{}: {}".format(self.name, self.description)
 
 
 class Note(models.Model):
@@ -141,7 +137,7 @@ class Skill(models.Model):
 
     name = models.CharField(max_length=32)
     value = models.PositiveSmallIntegerField(default=0)
-    s_type = models.CharField(max_length=32, choices=SKILL_TYPES, verbose_name="Skill Type")
+    s_type = models.CharField(max_length=32, choices=SKILL_TYPES, verbose_name="Skill Type", default="General")
     character = models.ForeignKey('Character')
     description = models.TextField(blank=True)
 
@@ -152,7 +148,7 @@ class Skill(models.Model):
 class Item(models.Model):
     name = models.CharField(max_length=32)
     description = models.TextField(blank=True)
-    character = models.ForeignKey('Character')
+    character = models.ForeignKey('Character', blank=True, null=True)
 
     slug = models.SlugField(unique=True)
 

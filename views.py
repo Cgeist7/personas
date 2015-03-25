@@ -8,7 +8,7 @@ from django.db.models import F, Q
 from crispy_forms.layout import Submit, HTML
 from crispy_forms.helper import FormHelper
 from personas.models import Nation, Location, Character, Organization, Relationship, Membership, Trait, SpecialAbility, Item, Story, MainMap, Chapter, Scene, Skill, Note, Communique
-from personas.forms import CharacterForm, NoteForm, CommuniqueForm, UserForm, UserProfileForm, SkillForm, TraitForm, TraitFormSetHelper
+from personas.forms import CharacterForm, NoteForm, CommuniqueForm, UserForm, UserProfileForm, SkillForm, TraitForm, TraitFormSetHelper, SkillFormSetHelper, ItemForm, SpecialAbilityForm
 
 
 def index(request):
@@ -223,46 +223,159 @@ def add_character(request):
 
 def add_trait(request, character_name_slug):
 
-    TraitFormSet = formset_factory(TraitForm, extra=4, max_num=4)
-    helper = TraitFormSetHelper()
-
     traits = Trait.objects.filter(character__slug=character_name_slug)
 
     character = Character.objects.get(slug=character_name_slug)
 
     if request.method == 'POST':
 
-        formset = TraitFormSet(request.POST)
+        form = TraitForm(request.POST)
 
-        if formset.is_valid():
+        if form.is_valid():
+            trait_character = character
 
-            for f in formset:
-                cd = f.cleaned_data
-                trait_character = character
+            #for f in formset:
+            cd = form.cleaned_data
+            if not cd.get('name'):
+                pass
+            else:
                 name = cd.get('name')
                 label = cd.get('label')
                 slug = slugify(cd.get('name'))
                 trait = Trait(
-                    name=name, label=label, character=trait_character, slug=slug)
+                    name=name, label=label,
+                    character=trait_character, slug=slug)
 
                 trait.save()
+                form = TraitForm()
 
-            HttpResponseRedirect("/personas/index")
+            return HttpResponseRedirect("")
 
         else:
-            print (formset.errors)
-            raise forms.ValidationError("Not validating")
+            print (form.errors)
 
     else:
 
-        formset = TraitFormSet()
+        form = TraitForm()
 
-        helper = TraitFormSetHelper()
-        helper.add_input(Submit("submit", "Save"))
-        helper.add_input(Submit("cancel", "Cancel"))
-
-    return render(request, 'personas/add_trait.html', {'formset': formset, 'helper': helper,
+    return render(request, 'personas/add_trait.html', {'form': form,
         'slug': character_name_slug, 'character': character, 'traits': traits})
+
+
+def add_skills(request, character_name_slug):
+
+    #SkillFormSet = formset_factory(SkillForm, extra=10, max_num=10)
+    #helper = SkillFormSetHelper()
+
+    skills = Skill.objects.filter(character__slug=character_name_slug)
+
+    character = Character.objects.get(slug=character_name_slug)
+
+    general_skills = Skill.objects.filter(
+            character__slug=character_name_slug).filter(s_type="General")
+    investigative_skills = Skill.objects.filter(
+            character__slug=character_name_slug).filter(s_type="Investigative")
+
+    if request.method == 'POST':
+
+        form = SkillForm(request.POST or None)
+
+        if form.is_valid():
+            skill_character = character
+
+            #for f in formset:
+            cd = form.cleaned_data
+            if cd.get('name') == None:
+                pass
+            else:
+                name = cd.get('name')
+                value = cd.get('value')
+                s_type = cd.get('s_type')
+                skill = Skill(
+                    name=name, value=value, character=skill_character, s_type=s_type)
+
+                skill.save()
+                form = SkillForm()
+
+            HttpResponseRedirect("")
+
+        else:
+            print (form.errors)
+
+    else:
+        form = SkillForm()
+
+        #helper = SkillFormSetHelper()
+        #helper.add_input(Submit("submit", "Save"))
+        #helper.add_input(Submit("cancel", "Cancel"))
+
+    return render(request, 'personas/add_skills.html', {'form': form,
+        'slug': character_name_slug, 'character': character,
+        'general_skills': general_skills,
+        'investigative_skills':investigative_skills})
+
+
+def add_ability_artifact(request, character_name_slug):
+
+    abilities = SpecialAbility.objects.filter(character__slug=character_name_slug)
+    artifacts = Item.objects.filter(character__slug=character_name_slug)
+
+    character = Character.objects.get(slug=character_name_slug)
+
+    if request.method == 'POST':
+
+        ability_form = SpecialAbilityForm(request.POST or None, prefix="ability")
+        artifact_form = ItemForm(request.POST or None, prefix="artifact")
+
+        if ability_form.is_valid():
+
+            ability_data = ability_form.cleaned_data
+
+            if ability_data.get('name') == None:
+                pass
+            else:
+                name = ability_data.get('name')
+                description = ability_data.get('description')
+                slug = name
+                ability = SpecialAbility(
+                    name=name, description=description, character=character, slug=slug)
+
+                ability.save()
+                ability_form = SpecialAbilityForm()
+
+        if artifact_form.is_valid():
+
+            artifact_data = artifact_form.cleaned_data
+            if artifact_data.get('name') == None:
+                pass
+            else:
+                name = artifact_data.get('name')
+                description = artifact_data.get('description')
+                slug = slugify(name)
+                artifact = Item(
+                    name=name, description=description, character=character, slug=slug)
+
+                artifact.save()
+                artifact_form = ItemForm()
+
+            HttpResponseRedirect("")
+
+        else:
+            print (ability_form.errors, artifact_form.errors)
+
+    else:
+        ability_form = SpecialAbilityForm()
+        artifact_form = ItemForm()
+
+        #helper = SkillFormSetHelper()
+        #helper.add_input(Submit("submit", "Save"))
+        #helper.add_input(Submit("cancel", "Cancel"))
+
+    return render(request, 'personas/add_ability_artifact.html', {
+        'slug': character_name_slug, 'character': character,
+        'abilities': abilities, 'artifacts': artifacts,
+        'ability_form':ability_form, "artifact_form": artifact_form
+        })
 
 
 def chapter(request, chapter_name_slug):

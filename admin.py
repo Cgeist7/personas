@@ -42,7 +42,7 @@ class CommuniqueAdmin(admin.ModelAdmin):
     list_display = ('author', 'receiver', 'content', 'date', 'rating')
 
 class SpecialAbilityAdmin(admin.ModelAdmin):
-    prepopulated_fields = {'slug': ('name',)}
+    pass
 
 class ItemAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}

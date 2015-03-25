@@ -36,18 +36,29 @@ class CharacterForm(forms.ModelForm):
 class SkillForm(forms.ModelForm):
     class Meta:
         model = Skill
-        fields = "__all__"
+        fields = ["name", "value", "s_type"]
 
     def __init__(self, *args, **kwargs):
         super(SkillForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper(self)
-        self.helper.form_tag = False
+        self.layout = Layout(Row('name','value'),
+            's_type',
+        )
         self.helper.layout.append(
             FormActions(
                 HTML("""<a role="button" class="btn btn-default"
                         href="#">Cancel</a>"""),
                 Submit('save', 'Submit'),))
 
+
+class SkillFormSetHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super(SkillFormSetHelper, self).__init__(*args, **kwargs)
+        self.form_method = 'post'
+        self.layout = Layout(Row('name','value'),
+            's_type',
+        )
+        self.render_required_fields = True,
 
 class TraitForm(forms.ModelForm):
     class Meta:
@@ -73,6 +84,44 @@ class TraitFormSetHelper(FormHelper):
             'name',
         )
         self.render_required_fields = True,
+
+
+class SpecialAbilityForm(forms.ModelForm):
+    class Meta:
+        model = SpecialAbility
+        fields = ["name", "description",]
+
+    def __init__(self, *args, **kwargs):
+        super(SpecialAbilityForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.layout = Layout(
+            'name',
+            'description',
+        )
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
+
+
+class ItemForm(forms.ModelForm):
+    class Meta:
+        model = Item
+        fields = ["name", "description",]
+
+    def __init__(self, *args, **kwargs):
+        super(ItemForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.layout = Layout(
+            'name',
+            'description',
+        )
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
 
 
 class SceneForm(forms.ModelForm):
