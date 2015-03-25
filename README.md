@@ -10,8 +10,8 @@ It's also designed to facilitate the development of these stories as a community
   If you want to start creating your own stories or to create characers, locations or items in an existing story, you'll need to register using the button to the top right.
   After registering and logging in, a story's creator can grant you access to their content or you can jump right in and create your own story!
   
-  ### Code Base:
+### Code Base:
   Personas is coded in Python 3.4 using Django 1.7.  Several apps have been added, with key map functionality coming from Django-Leaflet.
   
-  ### Plans:
+### Plans:
   Persona is a pet project to teach myself web development and to create a fun, useful way for gamers, authors and creators to come together to discuss and build better worlds.  My plans are to tighten up the initial release, deploy the app, test and refine with a small group of gamers and friends, and then conduct an open release.  Hope to see you there.
