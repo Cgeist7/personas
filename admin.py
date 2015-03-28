@@ -1,5 +1,6 @@
 from django.contrib import admin
 from personas.models import Character, Relationship, Organization, Membership, Location, Nation, Story, MainMap, Chapter, Scene, SpecialAbility, Trait, Item, Skill, Note, Communique, UserProfile
+from personas.forms import RelationshipForm
 #from leaflet.admin import LeafletGeoAdmin
 
 class FlatPageAdmin(admin.ModelAdmin):
@@ -46,6 +47,9 @@ class SpecialAbilityAdmin(admin.ModelAdmin):
 
 class ItemAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
+
+class RelationshipAdmin(admin.ModelAdmin):
+    form = RelationshipForm
 
 
 # Register your models here.

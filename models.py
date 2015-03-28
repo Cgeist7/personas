@@ -1,6 +1,9 @@
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
+from django.db.models import F, Q
+
 #from django.contrib.gis.db import models as gismodels
 #from jsonfield import JSONField
 #from djgeojson.fields import PointField
@@ -178,6 +181,7 @@ class Character(models.Model):
     name = models.CharField(max_length=128, unique=False)
     c_type = models.CharField(choices=CHAR_CHOICES, 
         max_length=32, default="Supporting", verbose_name="Character Type")
+    story = models.ForeignKey("Story", null=True, default=1)
     xp = models.PositiveSmallIntegerField(blank=True, default=0)
     description = models.TextField(blank=True)
     age = models.PositiveSmallIntegerField(default=21)
@@ -224,6 +228,7 @@ class Relationship(models.Model):
     )
 
     from_character = models.ForeignKey(Character, related_name="from_character")
+
     to_character = models.ForeignKey(Character, related_name="to_character")
 
     relationship_class = models.CharField(max_length=32,
@@ -234,7 +239,9 @@ class Relationship(models.Model):
     relationship_description = models.CharField(max_length=128, unique=False)
 
     def __str__(self):
-        return '{} - {} ({}: {}%) --> {}'.format(self.from_character, self.relationship_class, self.relationship_description, self.weight, self.to_character)
+        return '{} --> {} -- {} {}% ({})'.format(
+            self.from_character, self.to_character, self.relationship_class,
+             self.weight, self.relationship_description)
 
 
 class Organization(models.Model):
@@ -284,6 +291,7 @@ class Chapter(models.Model):
     title = models.CharField(max_length=128)
     description = models.TextField(blank=True)
     story = models.ForeignKey("Story")
+    number = models.PositiveSmallIntegerField(default=1, blank=True, verbose_name="Chapter Number")
 
     slug = models.SlugField(unique=True)
 
@@ -366,4 +374,9 @@ class UserProfile(models.Model):
         return self.user.username
 
 
+class Author(models.Model):
+    name = models.CharField(max_length=200)
+
+    def get_absolute_url(self):
+        return reverse('author-detail', kwargs={'pk': self.pk})
 

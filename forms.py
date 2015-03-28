@@ -7,8 +7,9 @@ from personas.models import Nation, Location, Character, Organization, Relations
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Div, Submit, HTML, Button, Row, Field
-from crispy_forms.bootstrap import AppendedText, PrependedText, FormActions
+from crispy_forms.bootstrap import AppendedText, PrependedText, FormActions, InlineField
 
+import datetime
 
 class CharacterForm(forms.ModelForm):
     class Meta:
@@ -41,7 +42,7 @@ class SkillForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(SkillForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper(self)
-        self.layout = Layout(Row('name','value'),
+        self.layout = Layout(InlineField('name','value'),
             's_type',
         )
         self.helper.layout.append(
@@ -55,7 +56,7 @@ class SkillFormSetHelper(FormHelper):
     def __init__(self, *args, **kwargs):
         super(SkillFormSetHelper, self).__init__(*args, **kwargs)
         self.form_method = 'post'
-        self.layout = Layout(Row('name','value'),
+        self.layout = Layout(InlineField('name','value'),
             's_type',
         )
         self.render_required_fields = True,
@@ -124,10 +125,93 @@ class ItemForm(forms.ModelForm):
                 Submit('save', 'Submit'),))
 
 
+class RelationshipForm(forms.ModelForm):
+    class Meta:
+        model = Relationship
+        fields = ["to_character", "relationship_class",
+        "relationship_description", "weight"]
+
+    def __init__(self, *args, **kwargs):
+        try:
+            self.story = kwargs.pop('story')
+        except KeyError:
+            self.story = None
+
+        super(RelationshipForm, self).__init__(*args, **kwargs)
+
+        if self.story:
+            self.fields['to_character'].queryset = Character.objects.filter(
+                story=self.story).order_by('name')
+
+        self.helper = FormHelper(self)
+        self.layout = Layout(
+            'name',
+            'description',
+        )
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
+
+
+class StoryForm(forms.ModelForm):
+    class Meta:
+        model = Story
+        fields = "__all__"
+        exclude = ['slug', 'creator', 'publication_date']
+
+    def __init__(self, *args, **kwargs):
+        super(StoryForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
+
+    def save(self, creator, commit=True):
+        instance = super(StoryForm, self).save(commit=False)
+        instance.slug = slugify(instance.title)
+        instance.creator = creator
+        instance.publication_date = datetime.datetime.now()
+        instance.save()
+        return instance
+
+
+class ChapterForm(forms.ModelForm):
+    class Meta:
+        model = Chapter
+        fields = ["title", "number", "description",]
+
+    def __init__(self, *args, **kwargs):
+        super(ChapterForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.layout = Layout(
+            'title',
+            'description',
+        )
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
+
+
 class SceneForm(forms.ModelForm):
     class Meta:
         model = Scene
-        fields = ['title', 'description', 'location']
+        fields = "__all__"
+        exclude = ["slug",]
+
+    def __init__(self, *args, **kwargs):
+        super(SceneForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.helper.layout.append(
+            FormActions(
+                HTML("""<a role="button" class="btn btn-default"
+                        href="#">Cancel</a>"""),
+                Submit('save', 'Submit'),))
 
 
 class NoteForm(forms.ModelForm):

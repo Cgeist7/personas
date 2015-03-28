@@ -2,13 +2,28 @@ from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.template.defaultfilters import slugify
+from django.core.urlresolvers import reverse_lazy
 from django.forms.formsets import formset_factory
 from django.contrib.auth import logout, login, authenticate
 from django.db.models import F, Q
+from django.views.generic.edit import DeleteView, UpdateView, FormView, CreateView
 from crispy_forms.layout import Submit, HTML
 from crispy_forms.helper import FormHelper
 from personas.models import Nation, Location, Character, Organization, Relationship, Membership, Trait, SpecialAbility, Item, Story, MainMap, Chapter, Scene, Skill, Note, Communique
-from personas.forms import CharacterForm, NoteForm, CommuniqueForm, UserForm, UserProfileForm, SkillForm, TraitForm, TraitFormSetHelper, SkillFormSetHelper, ItemForm, SpecialAbilityForm
+from personas.forms import CharacterForm, NoteForm, CommuniqueForm, UserForm, UserProfileForm, SkillForm, TraitForm, TraitFormSetHelper, SkillFormSetHelper, ItemForm, SpecialAbilityForm, RelationshipForm
+from personas.forms import StoryForm, ChapterForm, SceneForm
+
+
+'''class SkillDelete(DeleteView):
+    model = Skill
+    success_url = reverse_lazy('delete_skill')
+    template_name = 'delete_skill.html' 
+
+
+class StoryCreate(CreateView):
+    model = Story
+    template_name = 'personas/create_story.html'
+    success_url = "/personas/add_character" '''
 
 
 def index(request):
@@ -126,6 +141,7 @@ def character(request, character_name_slug):
 
         context_dict['character_name'] = character.name
         context_dict['creator'] = character.creator
+        context_dict['story'] = character.story
         context_dict['c_type'] = character.c_type
         context_dict['xp'] = character.xp
         context_dict['description'] = character.description
@@ -197,15 +213,17 @@ def character(request, character_name_slug):
     return render(request, 'personas/character.html', context_dict)
 
 
+@login_required
 def add_character(request):
 
     if request.method == 'POST':
-        character_form = CharacterForm(request.POST)
+        character_form = CharacterForm(request.POST, request.FILES)
 
         creator = request.user
 
         if character_form.is_valid():
             slug = slugify(character_form.cleaned_data['name'])
+
             character_form.save(creator=creator, commit=True)
 
             return HttpResponseRedirect("/personas/add_trait/{}".format(slug))
@@ -221,11 +239,39 @@ def add_character(request):
         {'character_form': character_form})
 
 
+@login_required
+def create_story(request):
+
+    if request.method == 'POST':
+        story_form = StoryForm(request.POST, request.FILES)
+
+        creator = request.user
+
+        if story_form.is_valid():
+            slug = slugify(story_form.cleaned_data['title'])
+
+            story_form.save(creator=creator, commit=True)
+
+            return HttpResponseRedirect("/personas/story/{}".format(slug))
+
+        else:
+            print (story_form.errors)
+
+    else:
+
+        story_form = StoryForm()
+
+    return render(request, 'personas/create_story.html',
+        {'story_form': story_form})
+
+
+@login_required
 def add_trait(request, character_name_slug):
 
     traits = Trait.objects.filter(character__slug=character_name_slug)
 
     character = Character.objects.get(slug=character_name_slug)
+    story = character.story
 
     if request.method == 'POST':
 
@@ -259,9 +305,11 @@ def add_trait(request, character_name_slug):
         form = TraitForm()
 
     return render(request, 'personas/add_trait.html', {'form': form,
-        'slug': character_name_slug, 'character': character, 'traits': traits})
+        'slug': character_name_slug, 'character': character,
+        'traits': traits, 'story':story})
 
 
+@login_required
 def add_skills(request, character_name_slug):
 
     #SkillFormSet = formset_factory(SkillForm, extra=10, max_num=10)
@@ -270,6 +318,8 @@ def add_skills(request, character_name_slug):
     skills = Skill.objects.filter(character__slug=character_name_slug)
 
     character = Character.objects.get(slug=character_name_slug)
+
+    story = character.story
 
     general_skills = Skill.objects.filter(
             character__slug=character_name_slug).filter(s_type="General")
@@ -312,15 +362,17 @@ def add_skills(request, character_name_slug):
     return render(request, 'personas/add_skills.html', {'form': form,
         'slug': character_name_slug, 'character': character,
         'general_skills': general_skills,
-        'investigative_skills':investigative_skills})
+        'investigative_skills':investigative_skills, 'story':story})
 
 
+@login_required
 def add_ability_artifact(request, character_name_slug):
 
     abilities = SpecialAbility.objects.filter(character__slug=character_name_slug)
     artifacts = Item.objects.filter(character__slug=character_name_slug)
 
     character = Character.objects.get(slug=character_name_slug)
+    story = character.story
 
     if request.method == 'POST':
 
@@ -336,9 +388,8 @@ def add_ability_artifact(request, character_name_slug):
             else:
                 name = ability_data.get('name')
                 description = ability_data.get('description')
-                slug = name
                 ability = SpecialAbility(
-                    name=name, description=description, character=character, slug=slug)
+                    name=name, description=description, character=character)
 
                 ability.save()
                 ability_form = SpecialAbilityForm()
@@ -373,9 +424,147 @@ def add_ability_artifact(request, character_name_slug):
 
     return render(request, 'personas/add_ability_artifact.html', {
         'slug': character_name_slug, 'character': character,
-        'abilities': abilities, 'artifacts': artifacts,
+        'abilities': abilities, 'artifacts': artifacts, 'story':story,
         'ability_form':ability_form, "artifact_form": artifact_form
         })
+
+
+@login_required
+def add_relationships(request, character_name_slug):
+
+    relationships = Relationship.objects.filter(Q(to_character__slug=character_name_slug) |
+        Q(from_character__slug=character_name_slug))
+
+    character = Character.objects.get(slug=character_name_slug)
+
+    story = character.story
+    data = {"from_character": character}
+
+    if request.method == 'POST':
+
+        relationship_form = RelationshipForm(request.POST or None)
+
+        if relationship_form.is_valid():
+
+            relationship_data = relationship_form.cleaned_data
+
+            if relationship_data.get('to_character') == None:
+                pass
+            else:
+                to_character = relationship_data.get('to_character')
+                relationship_description = relationship_data.get('relationship_description')
+                weight = relationship_data.get('weight')
+                relationship_class = relationship_data.get('relationship_class')
+                relationship = Relationship(
+                    from_character=character,
+                    to_character=to_character,
+                    relationship_description=relationship_description,
+                    relationship_class=relationship_class, weight=weight)
+
+                relationship.save()
+                relationship_form = RelationshipForm(story=story)
+
+            HttpResponseRedirect("")
+
+        else:
+            print (relationship_form.errors)
+
+    else:
+        relationship_form = RelationshipForm(story=story)
+
+    return render(request, 'personas/add_relationships.html', {
+        'slug': character_name_slug, 'character': character, 'story':story,
+        'relationships': relationships, 'relationship_form':relationship_form})
+
+
+@login_required
+def add_chapter(request, story_title_slug):
+
+    story = Story.objects.get(slug=story_title_slug)
+
+    chapters = Chapter.objects.filter(story__slug=story_title_slug).order_by("-number")
+
+    characters = Character.objects.filter(story=story)
+
+    if request.method == 'POST':
+
+        chapter_form = ChapterForm(request.POST or None)
+
+        if chapter_form.is_valid():
+
+            chapter_data = chapter_form.cleaned_data
+
+            if chapter_data.get('title') == None:
+                pass
+            else:
+                title = chapter_data.get('title')
+                number = chapter_data.get('number')
+                chapter_description = chapter_data.get('description')
+                chapter_slug = slugify(chapter_data.get('title'))
+                chapter = Chapter(title=title, story=story, number=number,
+                    description=chapter_description, slug=chapter_slug)
+
+                chapter.save()
+                chapter_form = ChapterForm()
+
+            HttpResponseRedirect("personas/chapter/{}".format(chapter_slug))
+
+        else:
+            print (chapter_form.errors)
+
+    else:
+        chapter_form = ChapterForm()
+
+    return render(request, 'personas/add_chapter.html', {
+        'slug': story_title_slug, 'story':story,
+        'chapters': chapters, 'chapter_form':chapter_form})
+
+
+@login_required
+def add_scene(request, story_title_slug):
+
+    story = Story.objects.get(chapter__story__slug=story_title_slug)
+
+    scenes = Scene.objects.filter(chapter__story__slug=story_title_slug).order_by("-number")
+
+    characters = Character.objects.filter(story=story)
+
+    if request.method == 'POST':
+
+        scene_form = SceneForm(request.POST or None)
+
+        if scene_form.is_valid():
+
+            scene_data = scene_form.cleaned_data
+
+            if scene_data.get('title') == None:
+                pass
+            else:
+                title = scene_data.get('title')
+                location = scene_data.get('location')
+                time = scene_data.get('time')
+                chapter = scene.data.get('chapter')
+                characters = scene_data.get('characters')
+                scene_description = scene_data.get('description')
+                scene_slug = slugify(scene_data.get('title'))
+                scene = Scene(title=title, location=location, time=time,
+                    description=scene_description, slug=scene_slug,
+                    characters=characters)
+
+                scene.save()
+                scene_form = SceneForm()
+
+            HttpResponseRedirect("")
+
+        else:
+            print (scene_form.errors)
+
+    else:
+        scene_form = SceneForm()
+
+    return render(request, 'personas/add_scene.html', {
+        'slug': story_title_slug, 'story':story, 'scenes': scenes,
+        'scene_form':scene_form, 'characters':characters})
 
 
 def chapter(request, chapter_name_slug):
@@ -388,7 +577,7 @@ def chapter(request, chapter_name_slug):
             'time')
 
         context_dict['chapter_title'] = chapter.title
-        context_dict['chapter_id'] = chapter.id
+        context_dict['chapter'] = chapter
         context_dict['slug'] = chapter_name_slug
         context_dict['story'] = chapter.story
         context_dict['description'] = chapter.description
@@ -437,7 +626,7 @@ def story(request, story_name_slug):
 
         context_dict['chapters'] = chapters
 
-        context_dict['story_title'] = story.title
+        context_dict['story'] = story
         context_dict['author'] = story.author
         context_dict['publication_date'] = story.publication_date
         context_dict['image'] = story.image
@@ -458,7 +647,7 @@ def story(request, story_name_slug):
         context_dict['scenes'] = scenes
 
         context_dict['characters'] = Character.objects.filter(
-                scene__chapter__story__title=story.title).distinct()
+                story=story).distinct()
         context_dict['locations'] = Location.objects.filter(
                 scene__chapter__story__title=story.title).distinct()
 
@@ -511,7 +700,7 @@ def register(request):
 
     if request.method == 'POST':
         user_form = UserForm(data=request.POST)
-        profile_form = UserProfileForm(data=request.POST)
+        profile_form = UserProfileForm(request.POST, request.FILES)
 
         if user_form.is_valid() and profile_form.is_valid():
             user = user_form.save()
